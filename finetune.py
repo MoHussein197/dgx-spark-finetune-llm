@@ -263,8 +263,8 @@ def main():
     training_args = SFTConfig(
         output_dir=output_dir,
         num_train_epochs=3,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=4,  # Effective batch = 8
+        per_device_train_batch_size=16,
+        gradient_accumulation_steps=1,  # Effective batch = 16
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         optim="paged_adamw_8bit" if not use_te else "adamw_torch",

@@ -58,6 +58,62 @@ python finetune.py --save-merged
 
 ---
 
+## Complete Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         COMPLETE PIPELINE                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. TRAIN                    2. EXPORT                  3. SERVE            │
+│  ──────────────────────      ──────────────────────     ─────────────────── │
+│                                                                             │
+│  ./run_training_docker.sh    ./run_export_nvfp4.sh      ./run_serve.sh      │
+│         nvfp4                                                               │
+│           │                         │                         │             │
+│           ▼                         ▼                         ▼             │
+│  ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐    │
+│  │ LoRA Adapter    │──────▶│ NVFP4 Model     │──────▶│ OpenAI API      │    │
+│  │ (~462MB, bf16)  │       │ (~1.5GB, FP4)   │       │ localhost:8000  │    │
+│  └─────────────────┘       └─────────────────┘       └─────────────────┘    │
+│                                                                             │
+│  Training with TE           Merge + Quantize          TensorRT-LLM          │
+│  NVFP4 compute             nvidia-modelopt            OpenAI compatible     │
+│  ~41GB VRAM                                                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Step-by-Step Commands
+
+```bash
+# Step 1: Train with NVFP4 (Blackwell optimized)
+./run_training_docker.sh nvfp4
+
+# Step 2: Export to NVFP4 format for TensorRT-LLM
+./run_export_nvfp4.sh
+
+# Step 3: Serve with OpenAI-compatible API
+./run_serve.sh
+
+# Step 4: Use the API
+curl http://localhost:8000/v1/chat/completions \
+    -H "Content-Type: application/json" \
+    -d '{"model": "smollm3-3b-nvfp4", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Test Inference (without serving)
+
+```bash
+# Interactive chat with fine-tuned model
+./run_inference_docker.sh nvfp4
+
+# Single prompt
+./run_inference_docker.sh nvfp4 "" "Explain machine learning"
+```
+
+---
+
 ## Installation
 
 ### Prerequisites
@@ -83,11 +139,14 @@ pip install transformers datasets accelerate peft trl bitsandbytes tensorboard
 python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.cuda.get_device_name(0)}')"
 ```
 
-### Setup Docker (for NVFP4/MXFP4)
+### Setup Docker (for NVFP4/MXFP8)
 
 ```bash
-# Pull NVIDIA PyTorch container (includes Transformer Engine)
-docker pull nvcr.io/nvidia/pytorch:25.05-py3
+# Pull NVIDIA PyTorch container (includes Transformer Engine 2.9+)
+docker pull nvcr.io/nvidia/pytorch:25.11-py3
+
+# Pull TensorRT-LLM container for serving (OpenAI API)
+docker pull nvcr.io/nvidia/tensorrt-llm/release:spark-single-gpu-dev
 ```
 
 ---
@@ -140,7 +199,23 @@ python finetune.py --use-nvfp4 --output-dir ./output/my-custom-lora
 
 ## Inference
 
-### Command Line
+### Using Docker Scripts (Recommended)
+
+```bash
+# NVFP4 inference - interactive mode
+./run_inference_docker.sh nvfp4
+
+# NVFP4 inference - single prompt
+./run_inference_docker.sh nvfp4 "" "Explain quantum computing"
+
+# MXFP8 inference
+./run_inference_docker.sh mxfp8
+
+# Custom adapter path
+./run_inference_docker.sh nvfp4 ./output/my-custom-adapter
+```
+
+### Command Line (without Docker)
 
 ```bash
 # Basic inference (FP4)
@@ -151,10 +226,6 @@ python inference.py --adapter ./output/smollm3-3b-reasoning-lora --prompt "What 
 
 # Interactive mode
 python inference.py --adapter ./output/smollm3-3b-reasoning-lora
-
-# With Transformer Engine NVFP4 (Docker)
-docker run --gpus all -v $(pwd):/workspace nvcr.io/nvidia/pytorch:25.05-py3 \
-    python /workspace/inference.py --backend nvfp4-te --prompt "Hello"
 ```
 
 ### Extended Thinking Mode
@@ -195,27 +266,56 @@ python inference.py [OPTIONS]
 
 ---
 
-## Model Export
+## Model Export & Serving
 
-### Merge LoRA Adapter
+### Export to NVFP4 (One Command)
 
 ```bash
-python inference.py --merge
-# Output: ./output/smollm3-3b-merged/
+# Export fine-tuned model to NVFP4 format for TensorRT-LLM
+./run_export_nvfp4.sh
+
+# With custom paths
+./run_export_nvfp4.sh ./output/smollm3-3b-reasoning-nvfp4-lora ./output/merged ./output/nvfp4
 ```
 
-### Export to NVFP4 (TensorRT-LLM)
+This script:
+1. Merges LoRA adapter with base model
+2. Quantizes to NVFP4 using nvidia-modelopt
+3. Outputs TensorRT-LLM compatible model
+
+### Serve with TensorRT-LLM (OpenAI API)
 
 ```bash
-conda activate nvfp4
+# Start server on port 8000
+./run_serve.sh
+
+# Custom port and batch size
+./run_serve.sh ./output/smollm3-3b-nvfp4 8080 8
+```
+
+### API Usage
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Chat completion (OpenAI compatible)
+curl http://localhost:8000/v1/chat/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "smollm3-3b-nvfp4",
+        "messages": [{"role": "user", "content": "Hello!"}]
+    }'
+```
+
+### Manual Export (without scripts)
+
+```bash
+# Merge only
+python inference.py --merge --adapter ./output/smollm3-3b-reasoning-nvfp4-lora
+
+# Export to NVFP4
 python inference.py --export-nvfp4
-# Output: ./output/smollm3-3b-nvfp4/
-```
-
-### Serve with TensorRT-LLM
-
-```bash
-trtllm-serve ./output/smollm3-3b-nvfp4 --backend pytorch
 ```
 
 ---
@@ -269,8 +369,8 @@ Edit `finetune.py` to adjust:
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `MAX_SEQ_LENGTH` | 8192 | Max sequence length |
-| `per_device_train_batch_size` | 2 | Batch size per GPU |
-| `gradient_accumulation_steps` | 4 | Effective batch = batch × accumulation |
+| `per_device_train_batch_size` | 16 | Batch size per GPU |
+| `gradient_accumulation_steps` | 1 | Effective batch = batch × accumulation |
 | `num_train_epochs` | 3 | Training epochs |
 | `learning_rate` | 2e-4 | Learning rate |
 | `r` (LoRA rank) | 64 | LoRA rank |
@@ -296,7 +396,10 @@ gradient_accumulation_steps = 8  # Increase to maintain effective batch
 ├── finetune.py               # Main training script
 ├── inference.py              # Inference + merge + export
 ├── run_training.sh           # bitsandbytes FP4 (Conda, any GPU)
-├── run_training_docker.sh    # MXFP4/NVFP4 (Docker, Blackwell)
+├── run_training_docker.sh    # NVFP4/MXFP8 training (Docker, Blackwell)
+├── run_inference_docker.sh   # Inference with Docker
+├── run_export_nvfp4.sh       # Export to NVFP4 for TensorRT-LLM
+├── run_serve.sh              # Serve with TensorRT-LLM (OpenAI API)
 ├── nvfp4.py                  # Custom NVFP4 implementation (reference)
 ├── quantize_nvfp4_tensorrt.py  # TensorRT export script
 └── README.md
@@ -341,40 +444,37 @@ export HF_TOKEN="your_token_here"
 
 ## Workflow Recommendations
 
-### Development
+### Development (Any GPU)
 
 ```bash
-# Fast iteration with adapter only
-python finetune.py
+# Fast iteration with bitsandbytes FP4
+./run_training.sh
 python inference.py --adapter ./output/smollm3-3b-reasoning-lora
 ```
 
-### Production Deployment
+### Production (Blackwell)
 
 ```bash
-# Full pipeline
-python finetune.py --save-merged
-python inference.py --export-nvfp4
-trtllm-serve ./output/smollm3-3b-nvfp4 --backend pytorch
+# Full pipeline: Train → Export → Serve
+./run_training_docker.sh nvfp4
+./run_export_nvfp4.sh
+./run_serve.sh
 ```
 
-### Maximum Performance (Blackwell)
+### Quick Test
 
 ```bash
-# Training with NVFP4
-./run_training_nvfp4.sh
-
-# Or QAT for best accuracy
-./run_qat_docker.sh nvfp4
+# Test inference without serving
+./run_inference_docker.sh nvfp4
 ```
 
 ---
 
 ## References
 
+- [DGX Spark Playbooks](https://github.com/NVIDIA/dgx-spark-playbooks) - Official NVIDIA examples
 - [SmolLM3-3B](https://huggingface.co/HuggingFaceTB/SmolLM3-3B)
 - [NVIDIA Transformer Engine](https://github.com/NVIDIA/TransformerEngine)
-- [NVFP4 Paper](https://arxiv.org/abs/2509.25149)
 - [LoRA: Low-Rank Adaptation](https://arxiv.org/abs/2106.09685)
 - [bitsandbytes](https://github.com/TimDettmers/bitsandbytes)
 - [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM)
