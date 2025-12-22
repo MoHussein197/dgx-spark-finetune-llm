@@ -1,0 +1,71 @@
+# Output directories
+output/
+outputs/
+checkpoints/
+logs/
+
+# Claude Code
+.claude/
+
+# Model files
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# HuggingFace cache
+.cache/
+huggingface/
+
+# Logs
+*.log
+tensorboard/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
